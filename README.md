@@ -2,8 +2,8 @@
 
 A Home Assistant custom integration that exposes vitals from the
 [Google Health API](https://developers.google.com/health) which the built-in
-`google_health` integration does not provide (SpO2 and HRV so far; respiratory rate
-and sleep skin temperature are planned).
+`google_health` integration does not provide (SpO2, HRV and respiratory rate so far; sleep skin
+temperature is planned).
 
 It is built on [`google-health-api`](https://github.com/allenporter/python-google-health-api)
 and is meant to be upstreamed to Home Assistant core in small pieces.
@@ -19,6 +19,9 @@ and is meant to be upstreamed to Home Assistant core in small pieces.
 | Heart rate variability sample time | `heart-rate-variability` | Timestamp of the latest sample |
 | Heart rate variability sleep average / deep sleep | `daily-heart-rate-variability` | Latest daily summary (ms) |
 | Non-REM heart rate | `daily-heart-rate-variability` | Latest daily summary (bpm) |
+| Respiratory rate | `daily-respiratory-rate` | Latest daily average (breaths/min) |
+| Respiratory rate during sleep / REM / deep / light | `respiratory-rate-sleep-summary` | Latest sleep summary (breaths/min) |
+| Respiratory rate sample time | `respiratory-rate-sleep-summary` | Timestamp of the latest sleep summary |
 
 ## Data sources
 

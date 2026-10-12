@@ -16,8 +16,10 @@ from google_health_api.model import (
     DataPoint,
     DailyHeartRateVariability,
     DailyOxygenSaturation,
+    DailyRespiratoryRate,
     HeartRateVariability,
     OxygenSaturation,
+    RespiratoryRateSleepSummary,
 )
 
 from homeassistant.core import HomeAssistant
@@ -148,4 +150,34 @@ class HeartRateVariabilityCoordinator(
         return HeartRateVariabilityData(
             latest=_latest_from_fitbit(latest.data_points),
             daily=_latest_from_fitbit(daily.data_points),
+        )
+
+
+@dataclass
+class RespiratoryRateData:
+    """Latest respiratory rate readings."""
+
+    daily: DailyRespiratoryRate | None = None
+    sleep: RespiratoryRateSleepSummary | None = None
+
+
+class RespiratoryRateCoordinator(GoogleHealthVitalsCoordinator[RespiratoryRateData]):
+    """Fetch the latest daily respiratory rate and sleep summary."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: GoogleHealthVitalsConfigEntry,
+        api_client: GoogleHealthApi,
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, entry, api_client, "respiratory_rate")
+
+    @override
+    async def _async_fetch_data(self) -> RespiratoryRateData:
+        daily = await self.api.daily_respiratory_rate.list(page_size=PAGE_SIZE)
+        sleep = await self.api.respiratory_rate_sleep_summary.list(page_size=PAGE_SIZE)
+        return RespiratoryRateData(
+            daily=_latest_from_fitbit(daily.data_points),
+            sleep=_latest_from_fitbit(sleep.data_points),
         )

@@ -41,6 +41,24 @@
       "non_rem_heart_rate": {
         "name": "Non-REM heart rate"
       },
+      "respiratory_rate": {
+        "name": "Respiratory rate"
+      },
+      "respiratory_rate_deep_sleep": {
+        "name": "Respiratory rate during deep sleep"
+      },
+      "respiratory_rate_light_sleep": {
+        "name": "Respiratory rate during light sleep"
+      },
+      "respiratory_rate_rem_sleep": {
+        "name": "Respiratory rate during REM sleep"
+      },
+      "respiratory_rate_sample_time": {
+        "name": "Respiratory rate sample time"
+      },
+      "respiratory_rate_sleep": {
+        "name": "Respiratory rate during sleep"
+      },
       "spo2": {
         "name": "Blood oxygen"
       },

@@ -21,6 +21,7 @@ from .const import DOMAIN
 from .coordinator import (
     HeartRateVariabilityCoordinator,
     OxygenSaturationCoordinator,
+    RespiratoryRateCoordinator,
 )
 
 _PLATFORMS: list[Platform] = [Platform.SENSOR]
@@ -32,6 +33,7 @@ class GoogleHealthVitalsData:
 
     oxygen_saturation: OxygenSaturationCoordinator
     heart_rate_variability: HeartRateVariabilityCoordinator
+    respiratory_rate: RespiratoryRateCoordinator
 
 
 type GoogleHealthVitalsConfigEntry = ConfigEntry[GoogleHealthVitalsData]
@@ -57,10 +59,12 @@ async def async_setup_entry(
     data = GoogleHealthVitalsData(
         oxygen_saturation=OxygenSaturationCoordinator(hass, entry, api_client),
         heart_rate_variability=HeartRateVariabilityCoordinator(hass, entry, api_client),
+        respiratory_rate=RespiratoryRateCoordinator(hass, entry, api_client),
     )
     await asyncio.gather(
         data.oxygen_saturation.async_config_entry_first_refresh(),
         data.heart_rate_variability.async_config_entry_first_refresh(),
+        data.respiratory_rate.async_config_entry_first_refresh(),
     )
     entry.runtime_data = data
 
