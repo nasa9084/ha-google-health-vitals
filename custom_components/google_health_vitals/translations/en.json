@@ -26,6 +26,12 @@
   },
   "entity": {
     "sensor": {
+      "heart_rate": {
+        "name": "Heart rate"
+      },
+      "heart_rate_sample_time": {
+        "name": "Heart rate sample time"
+      },
       "hrv": {
         "name": "Heart rate variability"
       },

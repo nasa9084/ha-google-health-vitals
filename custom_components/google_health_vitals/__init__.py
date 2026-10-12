@@ -19,6 +19,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 from . import api
 from .const import DOMAIN
 from .coordinator import (
+    HeartRateCoordinator,
     HeartRateVariabilityCoordinator,
     OxygenSaturationCoordinator,
     RespiratoryRateCoordinator,
@@ -33,6 +34,7 @@ class GoogleHealthVitalsData:
     """Coordinators of a Google Health Vitals config entry."""
 
     oxygen_saturation: OxygenSaturationCoordinator
+    heart_rate: HeartRateCoordinator
     heart_rate_variability: HeartRateVariabilityCoordinator
     respiratory_rate: RespiratoryRateCoordinator
     sleep_skin_temperature: SleepSkinTemperatureCoordinator
@@ -63,12 +65,14 @@ async def async_setup_entry(
     api_client = GoogleHealthApi(auth)
     data = GoogleHealthVitalsData(
         oxygen_saturation=OxygenSaturationCoordinator(hass, entry, api_client),
+        heart_rate=HeartRateCoordinator(hass, entry, api_client),
         heart_rate_variability=HeartRateVariabilityCoordinator(hass, entry, api_client),
         respiratory_rate=RespiratoryRateCoordinator(hass, entry, api_client),
         sleep_skin_temperature=SleepSkinTemperatureCoordinator(hass, entry, api_client),
     )
     await asyncio.gather(
         data.oxygen_saturation.async_config_entry_first_refresh(),
+        data.heart_rate.async_config_entry_first_refresh(),
         data.heart_rate_variability.async_config_entry_first_refresh(),
         data.respiratory_rate.async_config_entry_first_refresh(),
         data.sleep_skin_temperature.async_config_entry_first_refresh(),

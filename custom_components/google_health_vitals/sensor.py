@@ -202,6 +202,22 @@ RESPIRATORY_RATE_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
     ),
 )
 
+HEART_RATE_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
+    GoogleHealthVitalsSensorDescription(
+        key="heart_rate",
+        translation_key="heart_rate",
+        native_unit_of_measurement=BEATS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.beats_per_minute if data else None,
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="heart_rate_sample_time",
+        translation_key="heart_rate_sample_time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(data.sample_time if data else None),
+    ),
+)
+
 SLEEP_SKIN_TEMPERATURE_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
     GoogleHealthVitalsSensorDescription(
         key="sleep_skin_temperature",
@@ -248,6 +264,7 @@ async def async_setup_entry(
         GoogleHealthVitalsSensor(coordinator, entry, description)
         for coordinator, descriptions in (
             (data.oxygen_saturation, OXYGEN_SATURATION_SENSORS),
+            (data.heart_rate, HEART_RATE_SENSORS),
             (data.heart_rate_variability, HEART_RATE_VARIABILITY_SENSORS),
             (data.respiratory_rate, RESPIRATORY_RATE_SENSORS),
             (data.sleep_skin_temperature, SLEEP_SKIN_TEMPERATURE_SENSORS),
