@@ -2,8 +2,8 @@
 
 A Home Assistant custom integration that exposes vitals from the
 [Google Health API](https://developers.google.com/health) which the built-in
-`google_health` integration does not provide (SpO2, HRV and respiratory rate so far; sleep skin
-temperature is planned).
+`google_health` integration does not provide (SpO2, HRV, respiratory rate and sleep skin
+temperature).
 
 It is built on [`google-health-api`](https://github.com/allenporter/python-google-health-api)
 and is meant to be upstreamed to Home Assistant core in small pieces.
@@ -22,6 +22,9 @@ and is meant to be upstreamed to Home Assistant core in small pieces.
 | Respiratory rate | `daily-respiratory-rate` | Latest daily average (breaths/min) |
 | Respiratory rate during sleep / REM / deep / light | `respiratory-rate-sleep-summary` | Latest sleep summary (breaths/min) |
 | Respiratory rate sample time | `respiratory-rate-sleep-summary` | Timestamp of the latest sleep summary |
+| Sleep skin temperature | `daily-sleep-temperature-derivations` | Latest nightly skin temperature (°C) |
+| Sleep skin temperature baseline | `daily-sleep-temperature-derivations` | Personal baseline (°C), when available |
+| Sleep skin temperature deviation | `daily-sleep-temperature-derivations` | Nightly value minus baseline (°C) |
 
 ## Data sources
 
@@ -37,8 +40,9 @@ data recorded by a Fitbit device is used. Values from other sources are ignored.
 3. Add Application Credentials (a Google OAuth *Web application* client; the same
    client as the built-in `google_health` integration can be reused) and add the integration.
 
-The integration requests only the Google Health profile read scope and the
-measurements read scope only.
+The integration requests only the Google Health profile, measurements and sleep read
+scopes. If you set it up before sleep skin temperature was added, Home Assistant asks you
+to re-authenticate once to grant the sleep scope.
 
 ## Status
 

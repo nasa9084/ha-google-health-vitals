@@ -59,6 +59,15 @@
       "respiratory_rate_sleep": {
         "name": "Respiratory rate during sleep"
       },
+      "sleep_skin_temperature": {
+        "name": "Sleep skin temperature"
+      },
+      "sleep_skin_temperature_baseline": {
+        "name": "Sleep skin temperature baseline"
+      },
+      "sleep_skin_temperature_deviation": {
+        "name": "Sleep skin temperature deviation"
+      },
       "spo2": {
         "name": "Blood oxygen"
       },

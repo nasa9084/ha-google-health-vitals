@@ -16,4 +16,5 @@ DEFAULT_TITLE = "Google Health Vitals"
 OAUTH_SCOPES = [
     HealthApiScope.PROFILE_READ,
     HealthApiScope.MEASUREMENTS_READ,
+    HealthApiScope.SLEEP_READ,
 ]

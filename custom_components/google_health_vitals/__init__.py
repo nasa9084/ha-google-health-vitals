@@ -22,6 +22,7 @@ from .coordinator import (
     HeartRateVariabilityCoordinator,
     OxygenSaturationCoordinator,
     RespiratoryRateCoordinator,
+    SleepSkinTemperatureCoordinator,
 )
 
 _PLATFORMS: list[Platform] = [Platform.SENSOR]
@@ -34,6 +35,7 @@ class GoogleHealthVitalsData:
     oxygen_saturation: OxygenSaturationCoordinator
     heart_rate_variability: HeartRateVariabilityCoordinator
     respiratory_rate: RespiratoryRateCoordinator
+    sleep_skin_temperature: SleepSkinTemperatureCoordinator
 
 
 type GoogleHealthVitalsConfigEntry = ConfigEntry[GoogleHealthVitalsData]
@@ -47,7 +49,10 @@ async def async_setup_entry(
     session = OAuth2Session(hass, entry, implementation)
 
     scopes = session.token.get("scope", "").split()
-    if HealthApiScope.MEASUREMENTS_READ not in scopes:
+    if not all(
+        scope in scopes
+        for scope in (HealthApiScope.MEASUREMENTS_READ, HealthApiScope.SLEEP_READ)
+    ):
         raise ConfigEntryAuthFailed(
             translation_domain=DOMAIN, translation_key="missing_scope"
         )
@@ -60,11 +65,13 @@ async def async_setup_entry(
         oxygen_saturation=OxygenSaturationCoordinator(hass, entry, api_client),
         heart_rate_variability=HeartRateVariabilityCoordinator(hass, entry, api_client),
         respiratory_rate=RespiratoryRateCoordinator(hass, entry, api_client),
+        sleep_skin_temperature=SleepSkinTemperatureCoordinator(hass, entry, api_client),
     )
     await asyncio.gather(
         data.oxygen_saturation.async_config_entry_first_refresh(),
         data.heart_rate_variability.async_config_entry_first_refresh(),
         data.respiratory_rate.async_config_entry_first_refresh(),
+        data.sleep_skin_temperature.async_config_entry_first_refresh(),
     )
     entry.runtime_data = data
 
