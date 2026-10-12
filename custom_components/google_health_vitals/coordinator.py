@@ -17,6 +17,7 @@ from google_health_api.model import (
     DailyHeartRateVariability,
     DailyOxygenSaturation,
     DailyRespiratoryRate,
+    DailySleepTemperatureDerivations,
     HeartRateVariability,
     OxygenSaturation,
     RespiratoryRateSleepSummary,
@@ -38,15 +39,23 @@ PAGE_SIZE = 20
 FITBIT_PLATFORM = "FITBIT"
 
 
-def _latest_from_fitbit[_T](data_points: Sequence[DataPoint[_T]] | None) -> _T | None:
+def _latest_from_fitbit[_T](
+    data_points: Sequence[DataPoint[_T]] | None, *, allow_unknown_source: bool = False
+) -> _T | None:
     """Return the newest data point recorded by a Fitbit device.
+
+    Points without any data source information are skipped unless
+    ``allow_unknown_source`` is set.
 
     The API lists points from every connected source (for example Apple Health)
     in one stream. Other sources report different quantities, such as SDNN
     instead of RMSSD for HRV, so mixing them makes the series inconsistent.
     """
     for point in data_points or ():
-        if point.data_source and point.data_source.platform == FITBIT_PLATFORM:
+        if point.data_source is None:
+            if allow_unknown_source:
+                return point.data
+        elif point.data_source.platform == FITBIT_PLATFORM:
             return point.data
     return None
 
@@ -181,3 +190,25 @@ class RespiratoryRateCoordinator(GoogleHealthVitalsCoordinator[RespiratoryRateDa
             daily=_latest_from_fitbit(daily.data_points),
             sleep=_latest_from_fitbit(sleep.data_points),
         )
+
+
+class SleepSkinTemperatureCoordinator(
+    GoogleHealthVitalsCoordinator[DailySleepTemperatureDerivations | None]
+):
+    """Fetch the latest nightly skin temperature derived from sleep."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: GoogleHealthVitalsConfigEntry,
+        api_client: GoogleHealthApi,
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, entry, api_client, "sleep_skin_temperature")
+
+    @override
+    async def _async_fetch_data(self) -> DailySleepTemperatureDerivations | None:
+        result = await self.api.daily_sleep_temperature_derivations.list(
+            page_size=PAGE_SIZE
+        )
+        return _latest_from_fitbit(result.data_points, allow_unknown_source=True)

@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfTime
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -202,6 +202,40 @@ RESPIRATORY_RATE_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
     ),
 )
 
+SLEEP_SKIN_TEMPERATURE_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
+    GoogleHealthVitalsSensorDescription(
+        key="sleep_skin_temperature",
+        translation_key="sleep_skin_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.nightly_temperature_celsius if data else None,
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="sleep_skin_temperature_baseline",
+        translation_key="sleep_skin_temperature_baseline",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.baseline_temperature_celsius if data else None,
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="sleep_skin_temperature_deviation",
+        translation_key="sleep_skin_temperature_deviation",
+        device_class=SensorDeviceClass.TEMPERATURE_DELTA,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: (
+            data.nightly_temperature_celsius - data.baseline_temperature_celsius
+            if data and data.baseline_temperature_celsius is not None
+            else None
+        ),
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -216,6 +250,7 @@ async def async_setup_entry(
             (data.oxygen_saturation, OXYGEN_SATURATION_SENSORS),
             (data.heart_rate_variability, HEART_RATE_VARIABILITY_SENSORS),
             (data.respiratory_rate, RESPIRATORY_RATE_SENSORS),
+            (data.sleep_skin_temperature, SLEEP_SKIN_TEMPERATURE_SENSORS),
         )
         for description in descriptions
     )
