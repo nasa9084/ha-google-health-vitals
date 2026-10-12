@@ -175,9 +175,9 @@ class RespiratoryRateCoordinator(GoogleHealthVitalsCoordinator[RespiratoryRateDa
 
     @override
     async def _async_fetch_data(self) -> RespiratoryRateData:
-        daily = await self.api.daily_respiratory_rate.list(page_size=1)
-        sleep = await self.api.respiratory_rate_sleep_summary.list(page_size=1)
+        daily = await self.api.daily_respiratory_rate.list(page_size=PAGE_SIZE)
+        sleep = await self.api.respiratory_rate_sleep_summary.list(page_size=PAGE_SIZE)
         return RespiratoryRateData(
-            daily=daily.data_points[0].data if daily.data_points else None,
-            sleep=sleep.data_points[0].data if sleep.data_points else None,
+            daily=_latest_from_fitbit(daily.data_points),
+            sleep=_latest_from_fitbit(sleep.data_points),
         )
