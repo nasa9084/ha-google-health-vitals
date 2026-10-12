@@ -29,3 +29,7 @@ measurements read scope only.
 ## Status
 
 Early development.
+
+## License
+
+MIT
