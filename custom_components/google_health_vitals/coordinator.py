@@ -55,7 +55,7 @@ class GoogleHealthVitalsCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
     @override
     async def _async_update_data(self) -> _DataT:
         try:
-            return await self._async_fetch_data()
+            data = await self._async_fetch_data()
         except (HealthAuthException, HealthApiForbiddenException) as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN, translation_key="auth_error"
@@ -64,6 +64,8 @@ class GoogleHealthVitalsCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
             raise UpdateFailed(
                 translation_domain=DOMAIN, translation_key="communication_error"
             ) from err
+        _LOGGER.debug("Fetched %s: %s", self.name, data)
+        return data
 
     async def _async_fetch_data(self) -> _DataT:
         """Fetch data from the API."""
