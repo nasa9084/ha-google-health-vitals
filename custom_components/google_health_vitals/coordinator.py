@@ -18,6 +18,7 @@ from google_health_api.model import (
     DailyOxygenSaturation,
     DailyRespiratoryRate,
     DailySleepTemperatureDerivations,
+    HeartRate,
     HeartRateVariability,
     OxygenSaturation,
     RespiratoryRateSleepSummary,
@@ -36,6 +37,9 @@ _LOGGER = logging.getLogger(__name__)
 
 POLLING_INTERVAL = timedelta(minutes=15)
 PAGE_SIZE = 20
+# Heart rate is sampled far more densely than the other metrics and shares the
+# stream with other sources, so look at more points to find a Fitbit one.
+HEART_RATE_PAGE_SIZE = 100
 FITBIT_PLATFORM = "FITBIT"
 
 
@@ -212,3 +216,21 @@ class SleepSkinTemperatureCoordinator(
             page_size=PAGE_SIZE
         )
         return _latest_from_fitbit(result.data_points, allow_unknown_source=True)
+
+
+class HeartRateCoordinator(GoogleHealthVitalsCoordinator[HeartRate | None]):
+    """Fetch the latest heart rate sample."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: GoogleHealthVitalsConfigEntry,
+        api_client: GoogleHealthApi,
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, entry, api_client, "heart_rate")
+
+    @override
+    async def _async_fetch_data(self) -> HeartRate | None:
+        result = await self.api.heart_rate.list(page_size=HEART_RATE_PAGE_SIZE)
+        return _latest_from_fitbit(result.data_points)
