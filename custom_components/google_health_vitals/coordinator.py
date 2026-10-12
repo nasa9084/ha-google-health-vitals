@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 POLLING_INTERVAL = timedelta(minutes=15)
+DEBUG_PAGE_SIZE = 5
 
 
 class GoogleHealthVitalsCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
@@ -95,8 +96,10 @@ class OxygenSaturationCoordinator(GoogleHealthVitalsCoordinator[OxygenSaturation
     @override
     async def _async_fetch_data(self) -> OxygenSaturationData:
         # Data points are returned newest first, so one item is the latest.
-        latest = await self.api.oxygen_saturation.list(page_size=1)
-        daily = await self.api.daily_oxygen_saturation.list(page_size=1)
+        latest = await self.api.oxygen_saturation.list(page_size=DEBUG_PAGE_SIZE)
+        daily = await self.api.daily_oxygen_saturation.list(page_size=DEBUG_PAGE_SIZE)
+        _LOGGER.debug("SpO2 data points: %s", latest.data_points)
+        _LOGGER.debug("Daily SpO2 data points: %s", daily.data_points)
         return OxygenSaturationData(
             latest=latest.data_points[0].data if latest.data_points else None,
             daily=daily.data_points[0].data if daily.data_points else None,
@@ -127,8 +130,12 @@ class HeartRateVariabilityCoordinator(
 
     @override
     async def _async_fetch_data(self) -> HeartRateVariabilityData:
-        latest = await self.api.heart_rate_variability.list(page_size=1)
-        daily = await self.api.daily_heart_rate_variability.list(page_size=1)
+        latest = await self.api.heart_rate_variability.list(page_size=DEBUG_PAGE_SIZE)
+        daily = await self.api.daily_heart_rate_variability.list(
+            page_size=DEBUG_PAGE_SIZE
+        )
+        _LOGGER.debug("HRV data points: %s", latest.data_points)
+        _LOGGER.debug("Daily HRV data points: %s", daily.data_points)
         return HeartRateVariabilityData(
             latest=latest.data_points[0].data if latest.data_points else None,
             daily=daily.data_points[0].data if daily.data_points else None,
