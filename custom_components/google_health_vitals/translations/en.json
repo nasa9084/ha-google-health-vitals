@@ -26,6 +26,21 @@
   },
   "entity": {
     "sensor": {
+      "hrv": {
+        "name": "Heart rate variability"
+      },
+      "hrv_deep_sleep": {
+        "name": "Heart rate variability deep sleep"
+      },
+      "hrv_sample_time": {
+        "name": "Heart rate variability sample time"
+      },
+      "hrv_sleep_average": {
+        "name": "Heart rate variability sleep average"
+      },
+      "non_rem_heart_rate": {
+        "name": "Non-REM heart rate"
+      },
       "spo2": {
         "name": "Blood oxygen"
       },

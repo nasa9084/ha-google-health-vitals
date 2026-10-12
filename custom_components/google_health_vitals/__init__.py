@@ -1,5 +1,8 @@
 """The Google Health Vitals integration."""
 
+import asyncio
+from dataclasses import dataclass
+
 from google_health_api import GoogleHealthApi
 from google_health_api.const import HealthApiScope
 
@@ -15,11 +18,23 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 
 from . import api
 from .const import DOMAIN
-from .coordinator import OxygenSaturationCoordinator
+from .coordinator import (
+    HeartRateVariabilityCoordinator,
+    OxygenSaturationCoordinator,
+)
 
 _PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-type GoogleHealthVitalsConfigEntry = ConfigEntry[OxygenSaturationCoordinator]
+
+@dataclass
+class GoogleHealthVitalsData:
+    """Coordinators of a Google Health Vitals config entry."""
+
+    oxygen_saturation: OxygenSaturationCoordinator
+    heart_rate_variability: HeartRateVariabilityCoordinator
+
+
+type GoogleHealthVitalsConfigEntry = ConfigEntry[GoogleHealthVitalsData]
 
 
 async def async_setup_entry(
@@ -38,9 +53,16 @@ async def async_setup_entry(
     auth = api.AsyncConfigEntryAuth(
         aiohttp_client.async_get_clientsession(hass), session
     )
-    coordinator = OxygenSaturationCoordinator(hass, entry, GoogleHealthApi(auth))
-    await coordinator.async_config_entry_first_refresh()
-    entry.runtime_data = coordinator
+    api_client = GoogleHealthApi(auth)
+    data = GoogleHealthVitalsData(
+        oxygen_saturation=OxygenSaturationCoordinator(hass, entry, api_client),
+        heart_rate_variability=HeartRateVariabilityCoordinator(hass, entry, api_client),
+    )
+    await asyncio.gather(
+        data.oxygen_saturation.async_config_entry_first_refresh(),
+        data.heart_rate_variability.async_config_entry_first_refresh(),
+    )
+    entry.runtime_data = data
 
     await hass.config_entries.async_forward_entry_setups(entry, _PLATFORMS)
     return True
