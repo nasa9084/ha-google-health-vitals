@@ -27,6 +27,7 @@ from .coordinator import GoogleHealthVitalsCoordinator
 PARALLEL_UPDATES = 0
 
 BEATS_PER_MINUTE = "bpm"
+BREATHS_PER_MINUTE = "breaths/min"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -142,6 +143,66 @@ HEART_RATE_VARIABILITY_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] 
 )
 
 
+def _sleep_stat(stage: str) -> Callable[[Any], float | None]:
+    def value_fn(data: Any) -> float | None:
+        stats = getattr(data.sleep, stage, None) if data.sleep else None
+        return stats.breaths_per_minute if stats else None
+
+    return value_fn
+
+
+RESPIRATORY_RATE_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
+    GoogleHealthVitalsSensorDescription(
+        key="respiratory_rate",
+        translation_key="respiratory_rate",
+        native_unit_of_measurement=BREATHS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.daily.breaths_per_minute if data.daily else None,
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="respiratory_rate_sleep",
+        translation_key="respiratory_rate_sleep",
+        native_unit_of_measurement=BREATHS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=_sleep_stat("full_sleep_stats"),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="respiratory_rate_rem_sleep",
+        translation_key="respiratory_rate_rem_sleep",
+        native_unit_of_measurement=BREATHS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=_sleep_stat("rem_sleep_stats"),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="respiratory_rate_deep_sleep",
+        translation_key="respiratory_rate_deep_sleep",
+        native_unit_of_measurement=BREATHS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=_sleep_stat("deep_sleep_stats"),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="respiratory_rate_light_sleep",
+        translation_key="respiratory_rate_light_sleep",
+        native_unit_of_measurement=BREATHS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=_sleep_stat("light_sleep_stats"),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="respiratory_rate_sample_time",
+        translation_key="respiratory_rate_sample_time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(
+            data.sleep.sample_time if data.sleep else None
+        ),
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: GoogleHealthVitalsConfigEntry,
@@ -154,6 +215,7 @@ async def async_setup_entry(
         for coordinator, descriptions in (
             (data.oxygen_saturation, OXYGEN_SATURATION_SENSORS),
             (data.heart_rate_variability, HEART_RATE_VARIABILITY_SENSORS),
+            (data.respiratory_rate, RESPIRATORY_RATE_SENSORS),
         )
         for description in descriptions
     )
