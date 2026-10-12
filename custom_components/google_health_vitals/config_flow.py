@@ -5,7 +5,6 @@ import logging
 from typing import Any, override
 
 from google_health_api import GoogleHealthApi
-from google_health_api.const import HealthApiScope
 from google_health_api.exceptions import (
     GoogleHealthApiError,
     HealthApiScopeInsufficientException,
