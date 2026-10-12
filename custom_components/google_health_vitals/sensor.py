@@ -3,7 +3,9 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import override
+from typing import Any, override
+
+from google_health_api.model.health_metric import ObservationSampleTime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -11,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE
+from homeassistant.const import PERCENTAGE, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -20,25 +22,27 @@ from homeassistant.util import dt as dt_util
 
 from . import GoogleHealthVitalsConfigEntry
 from .const import DOMAIN
-from .coordinator import OxygenSaturationCoordinator, OxygenSaturationData
+from .coordinator import GoogleHealthVitalsCoordinator
 
 PARALLEL_UPDATES = 0
+
+BEATS_PER_MINUTE = "bpm"
 
 
 @dataclass(frozen=True, kw_only=True)
 class GoogleHealthVitalsSensorDescription(SensorEntityDescription):
     """Describes a Google Health Vitals sensor."""
 
-    value_fn: Callable[[OxygenSaturationData], float | datetime | None]
+    value_fn: Callable[[Any], float | datetime | None]
 
 
-def _sample_time(data: OxygenSaturationData) -> datetime | None:
-    if data.latest is None:
+def _timestamp(sample_time: ObservationSampleTime | None) -> datetime | None:
+    if sample_time is None:
         return None
-    return dt_util.parse_datetime(data.latest.sample_time.physical_time)
+    return dt_util.parse_datetime(sample_time.physical_time)
 
 
-SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
+OXYGEN_SATURATION_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
     GoogleHealthVitalsSensorDescription(
         key="spo2",
         translation_key="spo2",
@@ -51,7 +55,9 @@ SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
         key="spo2_sample_time",
         translation_key="spo2_sample_time",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=_sample_time,
+        value_fn=lambda data: _timestamp(
+            data.latest.sample_time if data.latest else None
+        ),
     ),
     GoogleHealthVitalsSensorDescription(
         key="spo2_sleep_average",
@@ -67,9 +73,7 @@ SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
-        value_fn=lambda data: (
-            data.daily.lower_bound_percentage if data.daily else None
-        ),
+        value_fn=lambda data: data.daily.lower_bound_percentage if data.daily else None,
     ),
     GoogleHealthVitalsSensorDescription(
         key="spo2_sleep_maximum",
@@ -77,8 +81,62 @@ SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        value_fn=lambda data: data.daily.upper_bound_percentage if data.daily else None,
+    ),
+)
+
+HEART_RATE_VARIABILITY_SENSORS: tuple[GoogleHealthVitalsSensorDescription, ...] = (
+    GoogleHealthVitalsSensorDescription(
+        key="hrv",
+        translation_key="hrv",
+        native_unit_of_measurement=UnitOfTime.MILLISECONDS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
         value_fn=lambda data: (
-            data.daily.upper_bound_percentage if data.daily else None
+            data.latest.root_mean_square_of_successive_differences_milliseconds
+            if data.latest
+            else None
+        ),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="hrv_sample_time",
+        translation_key="hrv_sample_time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(
+            data.latest.sample_time if data.latest else None
+        ),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="hrv_sleep_average",
+        translation_key="hrv_sleep_average",
+        native_unit_of_measurement=UnitOfTime.MILLISECONDS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: (
+            data.daily.average_heart_rate_variability_milliseconds
+            if data.daily
+            else None
+        ),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="hrv_deep_sleep",
+        translation_key="hrv_deep_sleep",
+        native_unit_of_measurement=UnitOfTime.MILLISECONDS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: (
+            data.daily.deep_sleep_root_mean_square_of_successive_differences_milliseconds
+            if data.daily
+            else None
+        ),
+    ),
+    GoogleHealthVitalsSensorDescription(
+        key="non_rem_heart_rate",
+        translation_key="non_rem_heart_rate",
+        native_unit_of_measurement=BEATS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: (
+            data.daily.non_rem_heart_rate_beats_per_minute if data.daily else None
         ),
     ),
 )
@@ -90,15 +148,19 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up sensors."""
-    coordinator = entry.runtime_data
+    data = entry.runtime_data
     async_add_entities(
         GoogleHealthVitalsSensor(coordinator, entry, description)
-        for description in SENSORS
+        for coordinator, descriptions in (
+            (data.oxygen_saturation, OXYGEN_SATURATION_SENSORS),
+            (data.heart_rate_variability, HEART_RATE_VARIABILITY_SENSORS),
+        )
+        for description in descriptions
     )
 
 
 class GoogleHealthVitalsSensor(
-    CoordinatorEntity[OxygenSaturationCoordinator], SensorEntity
+    CoordinatorEntity[GoogleHealthVitalsCoordinator[Any]], SensorEntity
 ):
     """A Google Health Vitals sensor."""
 
@@ -107,7 +169,7 @@ class GoogleHealthVitalsSensor(
 
     def __init__(
         self,
-        coordinator: OxygenSaturationCoordinator,
+        coordinator: GoogleHealthVitalsCoordinator[Any],
         entry: GoogleHealthVitalsConfigEntry,
         description: GoogleHealthVitalsSensorDescription,
     ) -> None:

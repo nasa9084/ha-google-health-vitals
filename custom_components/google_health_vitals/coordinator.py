@@ -1,4 +1,4 @@
-"""Coordinator for Google Health Vitals."""
+"""Coordinators for Google Health Vitals."""
 
 from dataclasses import dataclass
 from datetime import timedelta
@@ -11,7 +11,12 @@ from google_health_api.exceptions import (
     HealthApiForbiddenException,
     HealthAuthException,
 )
-from google_health_api.model import DailyOxygenSaturation, OxygenSaturation
+from google_health_api.model import (
+    DailyHeartRateVariability,
+    DailyOxygenSaturation,
+    HeartRateVariability,
+    OxygenSaturation,
+)
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -27,39 +32,30 @@ _LOGGER = logging.getLogger(__name__)
 POLLING_INTERVAL = timedelta(minutes=15)
 
 
-@dataclass
-class OxygenSaturationData:
-    """Latest SpO2 readings."""
-
-    latest: OxygenSaturation | None = None
-    daily: DailyOxygenSaturation | None = None
-
-
-class OxygenSaturationCoordinator(DataUpdateCoordinator[OxygenSaturationData]):
-    """Fetch the latest SpO2 sample and the latest daily (sleep) summary."""
+class GoogleHealthVitalsCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
+    """Base coordinator for Google Health Vitals."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         entry: GoogleHealthVitalsConfigEntry,
         api_client: GoogleHealthApi,
+        name: str,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{DOMAIN}_oxygen_saturation",
+            name=f"{DOMAIN}_{name}",
             update_interval=POLLING_INTERVAL,
             config_entry=entry,
         )
         self.api = api_client
 
     @override
-    async def _async_update_data(self) -> OxygenSaturationData:
+    async def _async_update_data(self) -> _DataT:
         try:
-            # Data points are returned newest first, so one item is the latest.
-            latest = await self.api.oxygen_saturation.list(page_size=1)
-            daily = await self.api.daily_oxygen_saturation.list(page_size=1)
+            return await self._async_fetch_data()
         except (HealthAuthException, HealthApiForbiddenException) as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN, translation_key="auth_error"
@@ -69,7 +65,69 @@ class OxygenSaturationCoordinator(DataUpdateCoordinator[OxygenSaturationData]):
                 translation_domain=DOMAIN, translation_key="communication_error"
             ) from err
 
+    async def _async_fetch_data(self) -> _DataT:
+        """Fetch data from the API."""
+        raise NotImplementedError
+
+
+@dataclass
+class OxygenSaturationData:
+    """Latest SpO2 readings."""
+
+    latest: OxygenSaturation | None = None
+    daily: DailyOxygenSaturation | None = None
+
+
+class OxygenSaturationCoordinator(GoogleHealthVitalsCoordinator[OxygenSaturationData]):
+    """Fetch the latest SpO2 sample and the latest daily (sleep) summary."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: GoogleHealthVitalsConfigEntry,
+        api_client: GoogleHealthApi,
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, entry, api_client, "oxygen_saturation")
+
+    @override
+    async def _async_fetch_data(self) -> OxygenSaturationData:
+        # Data points are returned newest first, so one item is the latest.
+        latest = await self.api.oxygen_saturation.list(page_size=1)
+        daily = await self.api.daily_oxygen_saturation.list(page_size=1)
         return OxygenSaturationData(
+            latest=latest.data_points[0].data if latest.data_points else None,
+            daily=daily.data_points[0].data if daily.data_points else None,
+        )
+
+
+@dataclass
+class HeartRateVariabilityData:
+    """Latest heart rate variability readings."""
+
+    latest: HeartRateVariability | None = None
+    daily: DailyHeartRateVariability | None = None
+
+
+class HeartRateVariabilityCoordinator(
+    GoogleHealthVitalsCoordinator[HeartRateVariabilityData]
+):
+    """Fetch the latest HRV sample and the latest daily (sleep) summary."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: GoogleHealthVitalsConfigEntry,
+        api_client: GoogleHealthApi,
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, entry, api_client, "heart_rate_variability")
+
+    @override
+    async def _async_fetch_data(self) -> HeartRateVariabilityData:
+        latest = await self.api.heart_rate_variability.list(page_size=1)
+        daily = await self.api.daily_heart_rate_variability.list(page_size=1)
+        return HeartRateVariabilityData(
             latest=latest.data_points[0].data if latest.data_points else None,
             daily=daily.data_points[0].data if daily.data_points else None,
         )
