@@ -20,6 +20,13 @@ and is meant to be upstreamed to Home Assistant core in small pieces.
 | Heart rate variability sleep average / deep sleep | `daily-heart-rate-variability` | Latest daily summary (ms) |
 | Non-REM heart rate | `daily-heart-rate-variability` | Latest daily summary (bpm) |
 
+## Data sources
+
+The Google Health API lists data from every connected source (for example Apple
+Health) in a single stream, and the sources report different quantities (Apple
+reports SDNN for HRV, Fitbit reports RMSSD). To keep each sensor consistent, only
+data recorded by a Fitbit device is used. Values from other sources are ignored.
+
 ## Installation (HACS)
 
 1. HACS → Custom repositories → add this repository as an *Integration*.

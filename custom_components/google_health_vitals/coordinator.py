@@ -1,5 +1,6 @@
 """Coordinators for Google Health Vitals."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 import logging
@@ -12,6 +13,7 @@ from google_health_api.exceptions import (
     HealthAuthException,
 )
 from google_health_api.model import (
+    DataPoint,
     DailyHeartRateVariability,
     DailyOxygenSaturation,
     HeartRateVariability,
@@ -30,7 +32,21 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 POLLING_INTERVAL = timedelta(minutes=15)
-DEBUG_PAGE_SIZE = 5
+PAGE_SIZE = 20
+FITBIT_PLATFORM = "FITBIT"
+
+
+def _latest_from_fitbit[_T](data_points: Sequence[DataPoint[_T]] | None) -> _T | None:
+    """Return the newest data point recorded by a Fitbit device.
+
+    The API lists points from every connected source (for example Apple Health)
+    in one stream. Other sources report different quantities, such as SDNN
+    instead of RMSSD for HRV, so mixing them makes the series inconsistent.
+    """
+    for point in data_points or ():
+        if point.data_source and point.data_source.platform == FITBIT_PLATFORM:
+            return point.data
+    return None
 
 
 class GoogleHealthVitalsCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
@@ -95,14 +111,11 @@ class OxygenSaturationCoordinator(GoogleHealthVitalsCoordinator[OxygenSaturation
 
     @override
     async def _async_fetch_data(self) -> OxygenSaturationData:
-        # Data points are returned newest first, so one item is the latest.
-        latest = await self.api.oxygen_saturation.list(page_size=DEBUG_PAGE_SIZE)
-        daily = await self.api.daily_oxygen_saturation.list(page_size=DEBUG_PAGE_SIZE)
-        _LOGGER.debug("SpO2 data points: %s", latest.data_points)
-        _LOGGER.debug("Daily SpO2 data points: %s", daily.data_points)
+        latest = await self.api.oxygen_saturation.list(page_size=PAGE_SIZE)
+        daily = await self.api.daily_oxygen_saturation.list(page_size=PAGE_SIZE)
         return OxygenSaturationData(
-            latest=latest.data_points[0].data if latest.data_points else None,
-            daily=daily.data_points[0].data if daily.data_points else None,
+            latest=_latest_from_fitbit(latest.data_points),
+            daily=_latest_from_fitbit(daily.data_points),
         )
 
 
@@ -130,13 +143,9 @@ class HeartRateVariabilityCoordinator(
 
     @override
     async def _async_fetch_data(self) -> HeartRateVariabilityData:
-        latest = await self.api.heart_rate_variability.list(page_size=DEBUG_PAGE_SIZE)
-        daily = await self.api.daily_heart_rate_variability.list(
-            page_size=DEBUG_PAGE_SIZE
-        )
-        _LOGGER.debug("HRV data points: %s", latest.data_points)
-        _LOGGER.debug("Daily HRV data points: %s", daily.data_points)
+        latest = await self.api.heart_rate_variability.list(page_size=PAGE_SIZE)
+        daily = await self.api.daily_heart_rate_variability.list(page_size=PAGE_SIZE)
         return HeartRateVariabilityData(
-            latest=latest.data_points[0].data if latest.data_points else None,
-            daily=daily.data_points[0].data if daily.data_points else None,
+            latest=_latest_from_fitbit(latest.data_points),
+            daily=_latest_from_fitbit(daily.data_points),
         )
